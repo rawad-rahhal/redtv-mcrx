@@ -152,8 +152,29 @@ def drop_in(req: DropInRequest, request: Request):
         title            = req.title,
         duration_seconds = req.duration_seconds,
     )
+
+    # Drop-ins reach the same decoder/output path as scheduled playlist items,
+    # so they must pass the same deterministic broadcast preflight before the
+    # engine sees them.  Keep the full report in app state for operators while
+    # returning a generic failure response so host paths are not reflected.
+    dropin_playlist = Playlist(
+        build_by       = "dropin",
+        items          = [item],
+        correlation_id = f"dropin:{item.slot_id}",
+    )
+    report = preflight_playlist(dropin_playlist, request.app.state.config)
+    request.app.state.guard_report = report.to_dict()
+    if not report.ok:
+        raise HTTPException(status_code=422, detail="Drop-in failed broadcast preflight")
+
     _engine(request).drop_in_next(item)
-    return {"status": "accepted", "slot_id": item.slot_id, "title": item.title}
+    return {
+        "status":   "accepted",
+        "slot_id":  item.slot_id,
+        "title":    item.title,
+        "guard_ok": True,
+        "warnings": report.warnings,
+    }
 
 
 @router.post("/emergency")
