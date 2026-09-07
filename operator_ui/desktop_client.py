@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import threading
@@ -177,9 +178,10 @@ else:
 
 
     class MainWindow(QMainWindow):
-        def __init__(self, api_base: str) -> None:
+        def __init__(self, api_base: str, api_key: str = "") -> None:
             super().__init__()
             self._api_base = api_base.rstrip("/")
+            self._api_key = (api_key or "").strip()
             self._setTitle()
             self.resize(1100, 720)
 
@@ -485,11 +487,14 @@ else:
         def _api_post(self, path: str, body: Optional[dict] = None) -> Optional[dict]:
             try:
                 data = json.dumps(body).encode() if body else b""
+                headers = {"Content-Type": "application/json"}
+                if self._api_key:
+                    headers["X-API-Key"] = self._api_key
                 req  = urllib.request.Request(
                     f"{self._api_base}{path}",
                     data=data,
                     method="POST",
-                    headers={"Content-Type": "application/json"},
+                    headers=headers,
                 )
                 with urllib.request.urlopen(req, timeout=5) as r:
                     return json.loads(r.read())
@@ -790,11 +795,16 @@ else:
         parser = argparse.ArgumentParser(description="RED TV MCRX v4.16.2 Operator Client")
         parser.add_argument("--api", default="http://localhost:8000",
                             help="API gateway base URL")
+        parser.add_argument(
+            "--api-key",
+            default=os.environ.get("REDTV_API_KEY", ""),
+            help="Control API key (prefer REDTV_API_KEY env var to avoid shell history)",
+        )
         args = parser.parse_args()
 
         app = QApplication(sys.argv)
         app.setApplicationName("RED TV MCRX v4.16.2")
-        win = MainWindow(api_base=args.api)
+        win = MainWindow(api_base=args.api, api_key=args.api_key)
         win.show()
         sys.exit(app.exec())
 
