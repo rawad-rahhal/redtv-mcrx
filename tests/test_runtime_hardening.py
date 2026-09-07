@@ -161,3 +161,57 @@ def test_load_file_schema_error_does_not_echo_file_values(tmp_path: Path):
     # must not reflect sensitive file contents in the response.
     assert response.status_code in {422}
     assert 'SECRET_VALUE' not in response.text
+
+
+def test_dropin_rejects_missing_program_media_before_engine(tmp_path: Path):
+    """The time-critical drop-in path must not bypass broadcast preflight."""
+    missing = tmp_path / 'missing-program.mp4'
+    app = create_app()
+
+    with TestClient(app) as client:
+        # If preflight is working, the engine must never receive this item.
+        calls = []
+        original = app.state.engine.drop_in_next
+        app.state.engine.drop_in_next = calls.append
+        try:
+            response = client.post('/api/dropin', json={
+                'media_path': str(missing),
+                'title': 'Unsafe drop-in',
+                'duration_seconds': 10.0,
+                'slot_type': 'program',
+            })
+        finally:
+            app.state.engine.drop_in_next = original
+
+    assert response.status_code == 422
+    assert response.json()['detail'] == 'Drop-in failed broadcast preflight'
+    assert calls == []
+    assert str(missing) not in response.text
+
+
+def test_dropin_accepts_preflighted_program_media(tmp_path: Path):
+    """A valid drop-in still reaches the engine after deterministic preflight."""
+    media = tmp_path / 'breaking-news.mp4'
+    media.write_bytes(b'fixture')
+    app = create_app()
+
+    with TestClient(app) as client:
+        calls = []
+        original = app.state.engine.drop_in_next
+        app.state.engine.drop_in_next = calls.append
+        try:
+            response = client.post('/api/dropin', json={
+                'media_path': str(media),
+                'title': 'Breaking news',
+                'duration_seconds': 10.0,
+                'slot_type': 'program',
+            })
+        finally:
+            app.state.engine.drop_in_next = original
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['status'] == 'accepted'
+    assert data['guard_ok'] is True
+    assert len(calls) == 1
+    assert calls[0].media_path == str(media)
