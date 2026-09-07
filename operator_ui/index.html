@@ -786,6 +786,7 @@ label.lbl{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.5px;
   <div class="sb-item"><b>FRAMES</b> <span id="sb-frames">—</span></div>
   <div class="sb-item"><b>DRIFT</b> <span id="sb-drift">—</span></div>
   <div class="sb-item"><b>GUARD</b> <span id="sb-guard">0</span></div>
+  <div class="sb-item"><button class="btn btn-dark" onclick="configureApiKey()" style="padding:2px 7px;font-size:9px">AUTH KEY</button> <span id="sb-auth">NOT SET</span></div>
   <div class="sb-item" style="margin-left:auto"><b>BUG</b> <span id="sb-bug">OFF</span></div>
   <div class="sb-item"><b>L3</b> <span id="sb-l3">OFF</span></div>
 </div>
@@ -793,7 +794,39 @@ label.lbl{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.5px;
 <!-- ═══════════════════════════ JAVASCRIPT ═══════════════════════════ -->
 <script>
 const API = window.location.origin;
+const API_KEY_STORAGE = 'redtv_mcrx_api_key';
 let ws = null, wsDelay = 1000, _st = {};
+
+function currentApiKey() {
+  return sessionStorage.getItem(API_KEY_STORAGE) || '';
+}
+
+function controlHeaders(extra = {}) {
+  const headers = Object.assign({}, extra);
+  const key = currentApiKey();
+  if (key) headers['X-API-Key'] = key;
+  return headers;
+}
+
+function updateAuthIndicator() {
+  const el = document.getElementById('sb-auth');
+  if (!el) return;
+  const configured = !!currentApiKey();
+  el.textContent = configured ? 'SET' : 'NOT SET';
+  el.style.color = configured ? 'var(--green)' : 'var(--yellow)';
+}
+
+function configureApiKey() {
+  const key = window.prompt('Enter the MCRX control API key. It is kept only in this browser tab/session. Leave blank to clear it.', '');
+  if (key === null) return false;
+  const value = key.trim();
+  if (value) sessionStorage.setItem(API_KEY_STORAGE, value);
+  else sessionStorage.removeItem(API_KEY_STORAGE);
+  updateAuthIndicator();
+  return !!value;
+}
+
+updateAuthIndicator();
 
 // ── Tab nav ────────────────────────────────────────────────────────────────
 function showTab(name, el) {
@@ -1015,7 +1048,7 @@ function setPVW(name){
   // Persist PVW selection in backend so renderer can generate /preview/pvw.jpg
   fetch(API + '/api/pvw/set', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: controlHeaders({'Content-Type':'application/json'}),
     body: JSON.stringify({ mode: mode, slot: slot })
   }).catch(()=>{});
 
@@ -1203,12 +1236,18 @@ async function doPost(path, body = {}) {
   try {
     const r = await fetch(API + path, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: controlHeaders({'Content-Type': 'application/json'}),
       body: JSON.stringify(body),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
-      addLog(`POST ${path} → ${r.status}: ${data.detail || '?'}`, 'log-err');
+      if (r.status === 401) {
+        addLog(`POST ${path} → 401: API key required or invalid. Use AUTH KEY in the status bar.`, 'log-err');
+      } else if (r.status === 503 && String(data.detail || '').includes('authentication')) {
+        addLog(`POST ${path} → 503: server REDTV_API_KEY is not configured.`, 'log-err');
+      } else {
+        addLog(`POST ${path} → ${r.status}: ${data.detail || '?'}`, 'log-err');
+      }
     } else {
       addLog(`POST ${path} → OK`, 'log-info');
     }
@@ -1221,7 +1260,7 @@ async function doPost(path, body = {}) {
 async function ackGuard() {
   try {
     const r = await fetch(API + '/api/guard/ack', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+      method:'POST', headers:controlHeaders({'Content-Type':'application/json'}), body: JSON.stringify({})
     });
     const j = await r.json();
     if (j && j.ok) {

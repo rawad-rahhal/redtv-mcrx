@@ -36,6 +36,7 @@ from api_gateway.routers.graphics import router as graphics_router
 from api_gateway.routers.guard    import router as guard_router
 from api_gateway.routers.renderer import router as renderer_router
 from api_gateway.routers.debug    import router as debug_router
+from api_gateway.auth             import MutatingAPIKeyMiddleware
 
 from playout_core.engine          import PlayoutEngine
 from playout_core.output_adapters import PreviewWindowAdapter
@@ -180,6 +181,9 @@ def create_app() -> FastAPI:
         allow_origins=cors, allow_credentials=True,
         allow_methods=["*"], allow_headers=["*"],
     )
+    # State-changing HTTP control operations fail closed unless the caller
+    # supplies X-API-Key matching the REDTV_API_KEY environment variable.
+    app.add_middleware(MutatingAPIKeyMiddleware)
     app.include_router(health_router)
     app.include_router(control_router)
     app.include_router(events_router)

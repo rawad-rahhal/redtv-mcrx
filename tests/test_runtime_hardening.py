@@ -13,6 +13,14 @@ from shared_contracts.preflight import preflight_playlist
 from playout_core.output_adapters import PreviewWindowAdapter
 
 
+CONTROL_TEST_KEY = "mcrx-test-control-key"
+
+
+def _control_headers(monkeypatch) -> dict[str, str]:
+    monkeypatch.setenv("REDTV_API_KEY", CONTROL_TEST_KEY)
+    return {"X-API-Key": CONTROL_TEST_KEY}
+
+
 def test_real_fastapi_lifespan_starts_and_stops_engine():
     """The real application lifespan must start, serve health, and shut down."""
     app = create_app()
@@ -23,7 +31,8 @@ def test_real_fastapi_lifespan_starts_and_stops_engine():
     assert app.state.engine._running is False
 
 
-def test_guard_runtime_endpoints_use_property_api():
+def test_guard_runtime_endpoints_use_property_api(monkeypatch):
+    headers = _control_headers(monkeypatch)
     app = create_app()
     with TestClient(app) as client:
         snap = client.get('/api/guard/snapshot')
@@ -33,7 +42,7 @@ def test_guard_runtime_endpoints_use_property_api():
         assert isinstance(data['violation_count'], int)
         assert isinstance(data['recent'], list)
 
-        ack = client.post('/api/guard/ack')
+        ack = client.post('/api/guard/ack', headers=headers)
         assert ack.status_code == 200
         ack_data = ack.json()
         assert ack_data['ok'] is True
@@ -132,30 +141,32 @@ def test_playlist_input_path_rejects_symlink_escape(tmp_path: Path):
         _resolve_playlist_input_path(config, 'escape.json')
 
 
-def test_load_file_api_rejects_absolute_path_before_reading(tmp_path: Path):
+def test_load_file_api_rejects_absolute_path_before_reading(tmp_path: Path, monkeypatch):
     secret = tmp_path / 'secret.json'
     secret.write_text('{"token": "DO_NOT_ECHO"}')
 
+    headers = _control_headers(monkeypatch)
     app = create_app()
     with TestClient(app) as client:
-        response = client.post('/api/playlist/load_file', params={'path': str(secret)})
+        response = client.post('/api/playlist/load_file', params={'path': str(secret)}, headers=headers)
 
     assert response.status_code == 400
     assert 'DO_NOT_ECHO' not in response.text
 
 
-def test_load_file_schema_error_does_not_echo_file_values(tmp_path: Path):
+def test_load_file_schema_error_does_not_echo_file_values(tmp_path: Path, monkeypatch):
     playlist_dir = tmp_path / 'playlists'
     playlist_dir.mkdir()
     bad = playlist_dir / 'bad.json'
     bad.write_text('{"items": [{"slot_type": "SECRET_VALUE", "media_path": "ignored.mp4"}]}')
 
+    headers = _control_headers(monkeypatch)
     app = create_app()
     app.state.config = dict(app.state.config)
     app.state.config['paths'] = dict(app.state.config.get('paths', {}))
     app.state.config['paths']['playlist_dir'] = str(playlist_dir)
     with TestClient(app) as client:
-        response = client.post('/api/playlist/load_file', params={'path': 'bad.json'})
+        response = client.post('/api/playlist/load_file', params={'path': 'bad.json'}, headers=headers)
 
     # The file is inside the allowed directory, but any schema/preflight failure
     # must not reflect sensitive file contents in the response.
@@ -163,9 +174,10 @@ def test_load_file_schema_error_does_not_echo_file_values(tmp_path: Path):
     assert 'SECRET_VALUE' not in response.text
 
 
-def test_dropin_rejects_missing_program_media_before_engine(tmp_path: Path):
+def test_dropin_rejects_missing_program_media_before_engine(tmp_path: Path, monkeypatch):
     """The time-critical drop-in path must not bypass broadcast preflight."""
     missing = tmp_path / 'missing-program.mp4'
+    headers = _control_headers(monkeypatch)
     app = create_app()
 
     with TestClient(app) as client:
@@ -179,7 +191,7 @@ def test_dropin_rejects_missing_program_media_before_engine(tmp_path: Path):
                 'title': 'Unsafe drop-in',
                 'duration_seconds': 10.0,
                 'slot_type': 'program',
-            })
+            }, headers=headers)
         finally:
             app.state.engine.drop_in_next = original
 
@@ -189,10 +201,11 @@ def test_dropin_rejects_missing_program_media_before_engine(tmp_path: Path):
     assert str(missing) not in response.text
 
 
-def test_dropin_accepts_preflighted_program_media(tmp_path: Path):
+def test_dropin_accepts_preflighted_program_media(tmp_path: Path, monkeypatch):
     """A valid drop-in still reaches the engine after deterministic preflight."""
     media = tmp_path / 'breaking-news.mp4'
     media.write_bytes(b'fixture')
+    headers = _control_headers(monkeypatch)
     app = create_app()
 
     with TestClient(app) as client:
@@ -205,7 +218,7 @@ def test_dropin_accepts_preflighted_program_media(tmp_path: Path):
                 'title': 'Breaking news',
                 'duration_seconds': 10.0,
                 'slot_type': 'program',
-            })
+            }, headers=headers)
         finally:
             app.state.engine.drop_in_next = original
 
@@ -215,3 +228,73 @@ def test_dropin_accepts_preflighted_program_media(tmp_path: Path):
     assert data['guard_ok'] is True
     assert len(calls) == 1
     assert calls[0].media_path == str(media)
+
+
+
+def test_mutating_control_fails_closed_without_server_api_key(monkeypatch):
+    monkeypatch.delenv("REDTV_API_KEY", raising=False)
+    app = create_app()
+    calls = []
+    original = app.state.engine.activate_emergency
+    app.state.engine.activate_emergency = lambda: calls.append("called")
+    try:
+        with TestClient(app) as client:
+            response = client.post("/api/emergency")
+    finally:
+        app.state.engine.activate_emergency = original
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Control API authentication is not configured"
+    assert calls == []
+
+
+def test_mutating_control_rejects_missing_and_wrong_api_key(monkeypatch):
+    monkeypatch.setenv("REDTV_API_KEY", CONTROL_TEST_KEY)
+    app = create_app()
+    with TestClient(app) as client:
+        missing = client.post("/api/emergency")
+        wrong = client.post("/api/emergency", headers={"X-API-Key": "wrong-secret"})
+
+    assert missing.status_code == 401
+    assert wrong.status_code == 401
+    assert CONTROL_TEST_KEY not in missing.text
+    assert CONTROL_TEST_KEY not in wrong.text
+    assert "wrong-secret" not in wrong.text
+
+
+def test_correct_api_key_allows_mutation_while_reads_stay_public(monkeypatch):
+    headers = _control_headers(monkeypatch)
+    app = create_app()
+    with TestClient(app) as client:
+        status = client.get("/api/status")
+        ack = client.post("/api/guard/ack", headers=headers)
+        pvw = client.post(
+            "/api/pvw/set",
+            headers=headers,
+            json={"mode": "live", "slot": "cam_1"},
+        )
+
+    assert status.status_code == 200
+    assert ack.status_code == 200
+    assert ack.json()["ok"] is True
+    assert pvw.status_code == 200
+    assert pvw.json()["ok"] is True
+
+
+def test_internal_event_push_is_protected_by_same_api_key(monkeypatch):
+    headers = _control_headers(monkeypatch)
+    app = create_app()
+    with TestClient(app) as client:
+        denied = client.post("/events/push", json={"state": "TEST"})
+        accepted = client.post("/events/push", json={"state": "TEST"}, headers=headers)
+
+    assert denied.status_code == 401
+    assert accepted.status_code == 200
+    assert accepted.json()["ok"] is True
+
+
+def test_dashboard_supports_session_scoped_control_api_key():
+    html = (Path(__file__).resolve().parents[1] / "operator_ui" / "index.html").read_text(encoding="utf-8")
+    assert "sessionStorage" in html
+    assert "X-API-Key" in html
+    assert "AUTH KEY" in html

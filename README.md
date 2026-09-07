@@ -4,7 +4,7 @@ Deterministic software-defined broadcast playout and master-control foundation f
 
 > **Naming note:** Formerly developed internally as **RED TV ASTRA**. Renamed to **MCRX** at the first public release to avoid confusion with Aveco's long-established ASTRA MCR product. Version numbering continues from the internal development history rather than resetting.
 
-> **Validation scope:** deterministic core logic, API lifespan, guard/preflight behavior and packaging are covered by automated tests. The `program_renderer` and `live_ingest` runtime services do not yet have representative end-to-end media/network coverage. Native API authentication is not yet implemented; deploy only on an isolated trusted VLAN or behind an authenticated reverse proxy/VPN.
+> **Validation scope:** deterministic core logic, API lifespan, guard/preflight behavior and packaging are covered by automated tests. The `program_renderer` and `live_ingest` runtime services do not yet have representative end-to-end media/network coverage. Mutating API Gateway operations require an `X-API-Key` matching the `REDTV_API_KEY` environment variable. This is a single-key authentication boundary, not full RBAC; keep deployment on an isolated trusted VLAN or behind an authenticated reverse proxy/VPN because the ingest/renderer services are still independently reachable.
 
 ---
 
@@ -34,7 +34,7 @@ All v3.x hardening preserved: RT guard, FSM, atomic writes, test suite.
 
 ## Security & deployment status
 
-This repository is a product foundation, not a turnkey third-party broadcast appliance. Before deployment outside a trusted MCR network, add authentication/RBAC and an operator audit trail. Mutating control endpoints must not be exposed directly to untrusted networks.
+This repository is a product foundation, not a turnkey third-party broadcast appliance. The API Gateway now fails closed on mutating HTTP control operations unless the caller supplies `X-API-Key` matching `REDTV_API_KEY`. This is not full RBAC and does not authenticate the separately reachable ingest/renderer services, so untrusted-network deployment still requires an external authenticated boundary and network controls.
 
 `/api/playlist/load_file` accepts only a filename resolved inside `paths.playlist_dir`; caller-supplied host filesystem paths are rejected.
 
@@ -43,6 +43,27 @@ See `SECURITY.md` and `HARDENING_REPORT.md` for the current threat model and kno
 ---
 
 ## Quick Start
+
+### Configure the control API key
+
+Set a long random control key in the environment **before** starting the API Gateway. The key is never stored in repository YAML. Mutating HTTP requests fail closed if the server key is absent.
+
+**Windows CMD**
+```bat
+set REDTV_API_KEY=replace-with-a-long-random-secret
+```
+
+**PowerShell**
+```powershell
+$env:REDTV_API_KEY = "replace-with-a-long-random-secret"
+```
+
+**Linux / macOS**
+```bash
+export REDTV_API_KEY='replace-with-a-long-random-secret'
+```
+
+The web dashboard has an **AUTH KEY** button and stores the operator key only in `sessionStorage`. The desktop client reads `REDTV_API_KEY` by default or accepts `--api-key`.
 
 ### Windows
 ```bat
@@ -120,6 +141,7 @@ Open http://localhost:8000/dashboard and click the **MultiView** tab.
 ### Via API
 ```bash
 curl -X POST http://localhost:8000/api/graphics/l3/set \
+  -H "X-API-Key: $REDTV_API_KEY" \
   -H "Content-Type: application/json" \
   -d @samples/take_lower_third.json
 ```
@@ -259,7 +281,7 @@ logging:
 - SRT in `playout_core` still uses a synthetic-frame adapter; real SRT preview/decode lives in `live_ingest`.
 - Direct DeckLink/SDI output remains a stub. The separate Program Renderer supports UDP MPEG-TS and optional NDI when the installed FFmpeg build provides NDI support.
 - End-to-end audio passthrough is not yet implemented.
-- Native API identity/RBAC is not yet implemented; production deployments must use a trusted MCR network or authenticated reverse proxy/VPN (see `SECURITY.md`).
+- The API Gateway has single-key authentication for mutating HTTP operations, but full identity/RBAC and service-to-service authentication are not yet implemented. Production deployments must still use a trusted MCR network or authenticated reverse proxy/VPN (see `SECURITY.md`).
 
 ---
 
