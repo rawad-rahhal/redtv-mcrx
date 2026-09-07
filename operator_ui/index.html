@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RED TV MCRX — Master Control v4.16.2</title>
+<style>
+:root {
+  --red:    #e03030;
+  --red2:   #b82020;
+  --green:  #22c55e;
+  --amber:  #f59e0b;
+  --blue:   #3b82f6;
+  --purple: #a855f7;
+  --dark:   #080808;
+  --panel:  #111111;
+  --panel2: #161616;
+  --border: #222;
+  --border2:#2a2a2a;
+  --muted:  #444;
+  --text:   #e8e8e8;
+  --text2:  #777;
+  --text3:  #999;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--dark);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;min-height:100vh;display:flex;flex-direction:column}
+
+/* ═══ HEADER ═══ */
+header{
+  background:#0d0d0d;
+  border-bottom:2px solid var(--red);
+  padding:8px 16px;
+  display:flex;align-items:center;gap:14px;
+  flex-shrink:0;
+}
+.logo{font-size:16px;font-weight:800;letter-spacing:3px;color:var(--red)}
+.logo span{color:var(--text3);font-size:10px;font-weight:400;letter-spacing:1px;margin-left:6px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.ws-badge{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;background:#1a1a1a;color:var(--muted);transition:.3s}
+.ws-badge.live{background:#0d2010;color:var(--green)}
+
+/* ═══ PROGRAM BANNER ═══ */
+#pgm-banner{
+  background:#0f0f0f;
+  border-bottom:1px solid var(--border);
+  padding:6px 16px;
+  display:flex;align-items:center;gap:14px;
+  flex-shrink:0;
+}
+.pgm-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px}
+#pgm-source{
+  font-size:20px;font-weight:900;letter-spacing:4px;text-transform:uppercase;
+  transition:color .3s;
+}
+#pgm-source.automation{color:var(--green)}
+#pgm-source.live{color:var(--red);text-shadow:0 0 12px rgba(224,48,48,.5)}
+.on-air-pill{
+  padding:3px 10px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:1px;
+  background:var(--red);color:#fff;text-transform:uppercase;
+  animation:blink 1.2s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.55}}
+.on-air-pill.off{background:#222;color:var(--muted);animation:none}
+
+/* ═══ NAV TABS ═══ */
+.nav{
+  background:#0f0f0f;
+  border-bottom:1px solid var(--border);
+  display:flex;gap:0;
+  flex-shrink:0;
+}
+.tab{
+  padding:9px 20px;
+  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;
+  transition:.2s;user-select:none;
+}
+.tab:hover{color:var(--text);background:#1a1a1a}
+.tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+/* ═══ CONTENT AREA ═══ */
+.view{display:none;flex:1;overflow:hidden}
+.view.active{display:flex;flex-direction:column}
+
+/* ═══ MULTIVIEW GRID ═══ */
+.multiview{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;
+  gap:2px;
+  background:var(--border);
+  flex:1;
+}
+.mv-pane{
+  background:var(--panel);
+  display:flex;flex-direction:column;
+  min-height:0;
+  position:relative;
+}
+.mv-pane-header{
+  padding:7px 12px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;background:#0e0e0e;
+}
+.mv-pane-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2)}
+.mv-on-air{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--muted);flex-shrink:0;transition:.3s;
+}
+.mv-on-air.active{background:var(--red);box-shadow:0 0 5px var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.mv-pane-body{flex:1;padding:10px;overflow-y:auto;min-height:0}
+
+/* Preview placeholder */
+.preview-box{
+  width:100%;aspect-ratio:16/9;
+  background:#050505;
+  border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;margin-bottom:10px;
+}
+.preview-box img{width:100%;height:100%;object-fit:cover}
+.preview-overlay-label{
+  position:absolute;left:8px;top:8px;
+  padding:3px 8px;border-radius:8px;
+  font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);
+  color:var(--text);
+}
+.tile-badge{
+  position:absolute;left:8px;bottom:8px;
+  padding:3px 8px;border-radius:8px;
+  font-size:10px;font-weight:700;letter-spacing:.5px;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);
+  color:var(--text3);
+}
+.tile-badge.tile-ok{color:var(--green)}
+.tile-badge.tile-bad{color:var(--amber)}
+.tile-badge.tile-onair{color:var(--red);text-shadow:0 0 8px rgba(224,48,48,.45)}
+.preview-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  color:var(--muted);font-size:11px;
+}
+.preview-placeholder .icon{font-size:28px;opacity:.4}
+
+/* Metadata grid */
+.meta-grid{display:grid;grid-template-columns:90px 1fr;gap:3px 8px;font-size:11px}
+.meta-key{color:var(--text2)}
+.meta-val{color:var(--text);font-weight:500;word-break:break-all}
+.meta-val.ok{color:var(--green)}
+.meta-val.warn{color:var(--amber)}
+.meta-val.err{color:var(--red)}
+
+/* ═══ CONTROL PANEL ═══ */
+.ctrl-view{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:1px;background:var(--border);
+  flex:1;overflow:hidden;
+}
+.ctrl-col{background:var(--panel);padding:0;display:flex;flex-direction:column;overflow-y:auto}
+.ctrl-section{border-bottom:1px solid var(--border)}
+.ctrl-section-header{
+  padding:8px 14px;
+  background:#0d0d0d;
+  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--red);border-bottom:1px solid var(--border);
+}
+.ctrl-section-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+
+/* ═══ BUTTONS ═══ */
+.btn{
+  padding:7px 14px;border:none;border-radius:3px;cursor:pointer;
+  font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  transition:opacity .15s,transform .1s;display:inline-flex;align-items:center;gap:5px;
+  justify-content:center;
+}
+.btn:hover{opacity:.85}.btn:active{transform:scale(.97)}
+.btn-row{display:flex;flex-wrap:wrap;gap:5px}
+.btn-green{background:var(--green);color:#000}
+.btn-red{background:var(--red);color:#fff}
+.btn-amber{background:var(--amber);color:#000}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-dark{background:#222;color:var(--text);border:1px solid var(--border2)}
+.btn-outline-red{background:transparent;color:var(--red);border:1px solid var(--red)}
+.btn-outline-green{background:transparent;color:var(--green);border:1px solid var(--green)}
+.btn-full{width:100%}
+
+/* Inputs */
+.inp{
+  background:#0f0f0f;border:1px solid var(--border2);border-radius:3px;
+  padding:6px 10px;color:var(--text);font-size:11px;font-family:monospace;
+  width:100%;
+}
+.inp:focus{outline:none;border-color:var(--blue)}
+.inp-row{display:flex;gap:5px;align-items:center}
+.inp-row .inp{flex:1}
+label.lbl{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.5px;display:block;margin-bottom:3px}
+
+/* Badge */
+.badge{
+  padding:2px 7px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+}
+.badge-idle{background:#1a1a1a;color:var(--muted)}
+.badge-ready{background:#0d2010;color:var(--green)}
+.badge-active{background:#0d1a30;color:var(--blue)}
+.badge-staging{background:#2a2010;color:var(--amber)}
+.badge-error{background:#2a0d0d;color:var(--red)}
+.badge-live{background:#2a0a0a;color:var(--red)}
+.badge-auto{background:#0d2010;color:var(--green)}
+
+/* ═══ SLOTS ═══ */
+.slot-card{
+  background:#0e0e0e;border:1px solid var(--border);border-radius:4px;
+  padding:10px;margin-bottom:6px;
+}
+.slot-header{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.slot-name{font-weight:700;font-size:12px;color:var(--text)}
+.slot-meta{display:grid;grid-template-columns:70px 1fr;gap:2px 6px;font-size:10px}
+.slot-key{color:var(--text2)}.slot-val{color:var(--text);word-break:break-all}
+.slot-btn-row{display:flex;gap:4px;margin-top:8px}
+
+/* ═══ LOWER THIRD preview ═══ */
+.l3-preview{
+  background:#111;border:1px solid var(--border);border-radius:3px;
+  padding:8px 12px;margin-top:6px;min-height:44px;
+  display:flex;flex-direction:column;justify-content:center;
+  position:relative;
+}
+.l3-headline{font-size:14px;font-weight:700;color:#fff}
+.l3-subline{font-size:11px;color:#aaa;margin-top:2px}
+.l3-bar{
+  position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--red);border-radius:3px 0 0 3px;
+}
+.l3-empty{color:var(--muted);font-size:11px;font-style:italic}
+
+/* ═══ EVENT LOG ═══ */
+.log-view{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--dark)}
+.log-toolbar{
+  padding:6px 14px;background:#0d0d0d;border-bottom:1px solid var(--border);
+  display:flex;gap:6px;align-items:center;flex-shrink:0;
+}
+#event-log{
+  flex:1;overflow-y:auto;padding:8px 14px;
+  font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.7;
+}
+.log-entry{padding:1px 0;border-bottom:1px solid #111}
+.log-ts{color:var(--muted);margin-right:8px}
+.log-info{color:#7ec8e3}.log-warn{color:var(--amber)}.log-err{color:var(--red)}
+.log-src{color:var(--purple)}.log-gfx{color:#f0a}.log-live{color:#0df}
+
+/* ═══ STATUS BAR ═══ */
+.statusbar{
+  background:#080808;border-top:1px solid var(--border);
+  padding:4px 14px;display:flex;gap:16px;align-items:center;
+  font-size:10px;color:var(--text2);flex-shrink:0;
+}
+.sb-item b{color:var(--text3)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#0d0d0d}
+::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+
+@media(max-width:900px){
+  .multiview{grid-template-columns:1fr}
+  .ctrl-view{grid-template-columns:1fr}
+}
+/* v4.6 — multiview live tiles */
+.live-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.live-tile{
+  aspect-ratio:16/9;
+  cursor:pointer;
+  border:1px solid var(--border2);
+}
+.live-tile img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:#000;
+}
+.live-tile:hover{
+  border-color:var(--blue);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header>
+  <div class="logo">RED TV MCRX <span>MASTER CONTROL v4.16.2</span></div>
+  <div class="header-right">
+    <div id="ws-badge" class="ws-badge">● OFFLINE</div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ PGM BANNER ═══════════════════════════ -->
+<div id="pgm-banner">
+  <div class="pgm-label">PROGRAM →</div>
+  <div id="pgm-source" class="automation">AUTOMATION</div>
+  <div id="on-air-pill" class="on-air-pill off">ON AIR</div>
+  <div style="margin-left:auto;display:flex;gap:6px">
+    <button class="btn btn-outline-green btn-sm" onclick="switchSource('automation')"
+            style="padding:4px 10px;font-size:10px">▶ AUTO</button>
+    <button class="btn btn-outline-red btn-sm" onclick="switchSource('live')"
+            style="padding:4px 10px;font-size:10px">▶ LIVE</button>
+    <button class="btn btn-red" onclick="doPost('/api/emergency')"
+            style="padding:4px 10px;font-size:10px">⚡ EMERGENCY</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ NAV TABS ═══════════════════════════ -->
+<nav class="nav">
+  <div class="tab active" onclick="showTab('multiview',this)">MultiView</div>
+  <div class="tab" onclick="showTab('control',this)">Control</div>
+  <div class="tab" onclick="showTab('graphics',this)">Graphics / CG</div>
+  <div class="tab" onclick="showTab('live',this)">Live Sources</div>
+  <div class="tab" onclick="showTab('log',this)">Event Log</div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TAB: MULTIVIEW
+════════════════════════════════════════════════════════════════ -->
+<div id="view-multiview" class="view active">
+  <div class="multiview">
+
+    <!-- PANE A: Program/Automation -->
+    <div class="mv-pane">
+      <div class="mv-pane-header">
+        <div class="mv-on-air active" id="paneA-dot"></div>
+        <div class="mv-pane-title">A — Program (Automation)</div>
+        <span class="badge badge-auto" id="paneA-badge">AUTO</span>
+      </div>
+      <div class="mv-pane-body">
+        <div class="preview-box">
+  <img id="pgm-preview" src="/api/renderer/preview/program.jpg" style="width:100%;height:100%;object-fit:cover;background:#000"
+       onerror="this.style.opacity=0.4" />
+  <div class="preview-overlay-label">PROGRAM</div>
+</div>
+</div>
+<div class="meta-grid">
+          <div class="meta-key">STATE</div>    <div class="meta-val" id="mv-state">—</div>
+          <div class="meta-key">CURRENT</div>  <div class="meta-val" id="mv-current">—</div>
+          <div class="meta-key">NEXT</div>     <div class="meta-val" id="mv-next">—</div>
+          <div class="meta-key">TIMELINE</div> <div class="meta-val" id="mv-timeline">—</div>
+          <div class="meta-key">FRAMES</div>   <div class="meta-val" id="mv-frames">—</div>
+          <div class="meta-key">DRIFT</div>    <div class="meta-val" id="mv-drift">—</div>
+          <div class="meta-key">VIOLATIONS</div><div class="meta-val" id="mv-violations">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE B: Live Preview -->
+    <div class="mv-pane">
+      <div class="mv-pane-header">
+        <div class="mv-on-air" id="paneB-dot"></div>
+        <div class="mv-pane-title">B — Live Preview</div>
+        <span class="badge badge-idle" id="paneB-badge">IDLE</span>
+      </div>
+      <div class="mv-pane-body">
+  <div class="live-grid">
+    <div class="preview-box live-tile" onclick="openLive('cam_1')">
+      <img id="live-cam_1" src="/api/live/preview/cam_1.jpg" onerror="this.style.opacity=0.25" />
+      <div class="preview-overlay-label">cam_1</div>
+      <div class="tile-badge" id="tile-badge-cam_1">—</div>
+      <div class="tile-actions" id="tile-act-cam_1">
+        <button class="btn btn-green" onclick="slotOnAir('cam_1');event.stopPropagation();">TAKE</button>
+        <button class="btn btn-red" onclick="slotDisconnect('cam_1');event.stopPropagation();">DISC</button>
+        <button class="btn btn-blue" onclick="slotReconnect('cam_1');event.stopPropagation();">RECONN</button>
+      </div>
+    </div>
+    <div class="preview-box live-tile" onclick="openLive('cam_2')">
+      <img id="live-cam_2" src="/api/live/preview/cam_2.jpg" onerror="this.style.opacity=0.25" />
+      <div class="preview-overlay-label">cam_2</div>
+      <div class="tile-badge" id="tile-badge-cam_2">—</div>
+      <div class="tile-actions" id="tile-act-cam_2">
+        <button class="btn btn-green" onclick="slotOnAir('cam_2');event.stopPropagation();">TAKE</button>
+        <button class="btn btn-red" onclick="slotDisconnect('cam_2');event.stopPropagation();">DISC</button>
+        <button class="btn btn-blue" onclick="slotReconnect('cam_2');event.stopPropagation();">RECONN</button>
+      </div>
+    </div>
+    <div class="preview-box live-tile" onclick="openLive('cam_3')">
+      <img id="live-cam_3" src="/api/live/preview/cam_3.jpg" onerror="this.style.opacity=0.25" />
+      <div class="preview-overlay-label">cam_3</div>
+      <div class="tile-badge" id="tile-badge-cam_3">—</div>
+      <div class="tile-actions" id="tile-act-cam_3">
+        <button class="btn btn-green" onclick="slotOnAir('cam_3');event.stopPropagation();">TAKE</button>
+        <button class="btn btn-red" onclick="slotDisconnect('cam_3');event.stopPropagation();">DISC</button>
+        <button class="btn btn-blue" onclick="slotReconnect('cam_3');event.stopPropagation();">RECONN</button>
+      </div>
+    </div>
+    <div class="preview-box live-tile" onclick="openLive('cam_4')">
+      <img id="live-cam_4" src="/api/live/preview/cam_4.jpg" onerror="this.style.opacity=0.25" />
+      <div class="preview-overlay-label">cam_4</div>
+      <div class="tile-badge" id="tile-badge-cam_4">—</div>
+      <div class="tile-actions" id="tile-act-cam_4">
+        <button class="btn btn-green" onclick="slotOnAir('cam_4');event.stopPropagation();">TAKE</button>
+        <button class="btn btn-red" onclick="slotDisconnect('cam_4');event.stopPropagation();">DISC</button>
+        <button class="btn btn-blue" onclick="slotReconnect('cam_4');event.stopPropagation();">RECONN</button>
+      </div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:8px;color:var(--text3);font-size:12px">
+    Click a tile to open the JPEG in a new tab. Use “On Air” control to take a slot live.
+  </div>
+</div></div>
+    </div>
+
+    <!-- PANE C: PVW -->
+    <div class="mv-pane">
+      <div class="mv-pane-header">
+        <div class="mv-on-air" id="paneC-dot" style="background:#3b82f6"></div>
+        <div class="mv-pane-title">C — PVW (Preview)</div>
+        <span class="badge badge-idle" id="pvw-badge">PVW</span>
+        <select class="inp" id="pvw-select" style="margin-left:auto;max-width:180px" onchange="setPVW(this.value)">
+          <option value="next_auto">NEXT (AUTO)</option>
+          <option value="program">PROGRAM</option>
+          <option value="cam_1">cam_1</option>
+          <option value="cam_2">cam_2</option>
+          <option value="cam_3">cam_3</option>
+          <option value="cam_4">cam_4</option>
+          <option value="whatsapp_1">whatsapp_1</option>
+        </select>
+      </div>
+      <div class="mv-pane-body">
+        <div class="preview-box live-tile" style="aspect-ratio:16/9">
+          <img id="pvw-preview" src="/api/renderer/preview/pvw.jpg" onerror="this.style.opacity=0.25" />
+          <div class="preview-overlay-label">PVW</div>
+          <div class="tile-badge" id="pvw-badge-text">—</div>
+          <div class="tile-actions">
+            <button class="btn btn-green" onclick="slotOnAir(_pvwSlot)">TAKE</button>
+            <button class="btn btn-red" onclick="slotDisconnect(_pvwSlot)">DISC</button>
+            <button class="btn btn-blue" onclick="slotReconnect(_pvwSlot)">RECONN</button>
+    
+        <div class="preview-box live-tile" style="aspect-ratio:16/9; margin-top:10px">
+          <img id="next2-preview" src="/api/renderer/preview/automation_next2.jpg" onerror="this.style.opacity=0.25" />
+          <div class="preview-overlay-label">NEXT+1</div>
+          <div class="tile-badge" id="next2-badge-text">AUTO NEXT+1</div>
+        </div>
+      </div>
+        </div>
+        <div class="meta-grid" style="margin-top:10px">
+          <div class="meta-key">SLOT</div><div class="meta-val" id="pvw-slot">—</div>
+          <div class="meta-key">ON AIR</div><div class="meta-val" id="pvw-onair">—</div>
+          <div class="meta-key">FRAME AGE</div><div class="meta-val" id="pvw-age">—</div>
+          <div class="meta-key">STATUS</div><div class="meta-val" id="pvw-ok">—</div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- PANE D: Graphics State + Guard -->
+    <div class="mv-pane">
+      <div class="mv-pane-header">
+        <div class="mv-on-air" id="paneD-dot" style="background:#a855f7"></div>
+        <div class="mv-pane-title">D — Graphics &amp; Guard</div>
+      </div>
+      <div class="mv-pane-body">
+        <!-- L3 preview in multiview -->
+        <div class="l3-preview" id="mv-l3-box" style="margin-bottom:10px">
+          <div class="l3-bar"></div>
+          <div class="l3-empty" id="mv-l3-empty">No lower third active</div>
+          <div id="mv-l3-content" style="display:none">
+            <div class="l3-headline" id="mv-l3-headline">—</div>
+            <div class="l3-subline" id="mv-l3-subline"></div>
+          </div>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-key">BUG</div>       <div class="meta-val" id="mv-bug">OFF</div>
+          <div class="meta-key">BUG TEXT</div>  <div class="meta-val" id="mv-bug-text">—</div>
+          <div class="meta-key">L3 STYLE</div>  <div class="meta-val" id="mv-l3-style">—</div>
+          <div class="meta-key">L3 LEFT</div>   <div class="meta-val" id="mv-l3-rem">—</div>
+          <div class="meta-key">VIOLATIONS</div><div class="meta-val" id="mv-guard-v">0</div>
+          <div class="meta-key">RING DROP</div> <div class="meta-val" id="mv-ring-drop">0</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .multiview -->
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TAB: CONTROL
+════════════════════════════════════════════════════════════════ -->
+<div id="view-control" class="view">
+  <div class="ctrl-view">
+
+    <!-- Col 1: Engine -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Engine State</div>
+        <div class="ctrl-section-body">
+          <div class="meta-grid" id="ctrl-engine-metrics">
+            <div class="meta-key">STATE</div>    <div class="meta-val" id="c-state">—</div>
+            <div class="meta-key">CURRENT</div>  <div class="meta-val" id="c-current">—</div>
+            <div class="meta-key">NEXT</div>     <div class="meta-val" id="c-next">—</div>
+            <div class="meta-key">TIMELINE</div> <div class="meta-val" id="c-timeline">—</div>
+            <div class="meta-key">FRAMES</div>   <div class="meta-val" id="c-frames">—</div>
+            <div class="meta-key">DRIFT ms</div> <div class="meta-val" id="c-drift">—</div>
+            <div class="meta-key">HOLDS</div>    <div class="meta-val" id="c-holds">—</div>
+            <div class="meta-key">DROPS</div>    <div class="meta-val" id="c-drops">—</div>
+            <div class="meta-key">GUARD VIOL</div><div class="meta-val err" id="c-violations">0</div>
+            <div class="meta-key">RING PEND</div><div class="meta-val" id="c-ring">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Controls</div>
+        <div class="ctrl-section-body">
+          <div class="btn-row">
+            <button class="btn btn-outline-green" onclick="doPost('/api/emergency')">⚡ EMERGENCY</button>
+          </div>
+          <label class="lbl" style="margin-top:4px">Load Playlist JSON (configured playlist directory)</label>
+          <div class="inp-row">
+            <input class="inp" id="playlist-path" placeholder="today.json">
+            <button class="btn btn-dark" onclick="loadPlaylistFile()">LOAD</button>
+          </div>
+          <div id="c-last-error" style="font-size:10px;color:var(--amber);word-break:break-all;min-height:14px"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Guard Violations</div>
+        <div class="ctrl-section-body">
+          <div class="btn-row" style="margin-bottom:6px">
+            <button class="btn btn-dark" onclick="ackGuard()">ACKNOWLEDGE</button>
+            <div id="c-guard-ack" style="font-size:10px;color:var(--text2)"></div>
+          </div>
+          <div id="c-guard-list" style="font-size:10px;color:var(--text2);font-family:monospace">None recorded.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: Source switching + Live file -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Program Source</div>
+        <div class="ctrl-section-body">
+          <div id="ctrl-pgm-label" style="font-size:18px;font-weight:800;letter-spacing:3px;color:var(--green)">● AUTOMATION</div>
+          <div class="btn-row" style="margin-top:6px">
+            <button class="btn btn-outline-green btn-full" onclick="switchSource('automation')">▶ ON AIR: AUTOMATION</button>
+            <button class="btn btn-outline-red btn-full" onclick="switchSource('live')">▶ ON AIR: LIVE</button>
+          </div>
+          <div id="switch-status" style="font-size:10px;color:var(--text2);margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Live File (WhatsApp / Drop)</div>
+        <div class="ctrl-section-body">
+          <label class="lbl">File Path (UNC OK)</label>
+          <div class="inp-row">
+            <input class="inp" id="live-file-path" placeholder="\\NAS-SERVER\CHANNEL\live\clip.mp4">
+            <button class="btn btn-blue" onclick="stageLiveFile()">📁 STAGE</button>
+          </div>
+          <div class="meta-grid" style="margin-top:6px">
+            <div class="meta-key">LIVE STATE</div> <div class="meta-val" id="c-live-state">idle</div>
+            <div class="meta-key">READY</div>       <div class="meta-val" id="c-live-ready">NO</div>
+            <div class="meta-key">LAST ERR</div>    <div class="meta-val err" id="c-live-err">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">SRT / Camera</div>
+        <div class="ctrl-section-body">
+          <label class="lbl">SRT URL</label>
+          <input class="inp" id="srt-url" placeholder="srt://192.0.2.10:1234" style="margin-bottom:5px">
+          <div class="inp-row">
+            <input class="inp" id="srt-name" placeholder="cam_1" style="max-width:90px">
+            <button class="btn btn-purple" onclick="connectSRT()">📡 CONNECT SRT</button>
+            <button class="btn btn-dark" onclick="doPost('/api/live/stop')">■ STOP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 3: Drop-in -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Drop-in</div>
+        <div class="ctrl-section-body">
+          <label class="lbl">Media Path</label>
+          <input class="inp" id="di-path" placeholder="\\NAS-SERVER\CHANNEL\media\000001.mp4" style="margin-bottom:5px">
+          <label class="lbl">Title</label>
+          <input class="inp" id="di-title" placeholder="Breaking News Insert" style="margin-bottom:5px">
+          <label class="lbl">Duration (s, optional)</label>
+          <div class="inp-row">
+            <input class="inp" id="di-dur" placeholder="auto" type="number" style="max-width:80px">
+            <button class="btn btn-amber" onclick="doDropIn()">▶ DROP IN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TAB: GRAPHICS / CG
+════════════════════════════════════════════════════════════════ -->
+<div id="view-graphics" class="view">
+  <div class="ctrl-view">
+
+    <!-- Col 1: Channel Bug -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Channel Bug</div>
+        <div class="ctrl-section-body">
+          <div class="meta-grid" style="margin-bottom:10px">
+            <div class="meta-key">STATUS</div> <div class="meta-val" id="g-bug-status">OFF</div>
+            <div class="meta-key">TEXT</div>   <div class="meta-val" id="g-bug-text">—</div>
+            <div class="meta-key">POSITION</div><div class="meta-val" id="g-bug-pos">—</div>
+            <div class="meta-key">OPACITY</div><div class="meta-val" id="g-bug-opacity">—</div>
+          </div>
+          <label class="lbl">Bug Text (optional, e.g. LIVE)</label>
+          <input class="inp" id="bug-text" placeholder="LIVE" style="margin-bottom:5px">
+          <label class="lbl">Position</label>
+          <select class="inp" id="bug-pos" style="margin-bottom:5px">
+            <option value="bottom_right">Bottom Right</option>
+            <option value="bottom_left">Bottom Left</option>
+            <option value="top_right">Top Right</option>
+            <option value="top_left">Top Left</option>
+          </select>
+          <label class="lbl">Opacity (0–1)</label>
+          <input class="inp" type="number" id="bug-opacity" value="0.85" min="0" max="1" step="0.05" style="margin-bottom:8px">
+          <div class="btn-row">
+            <button class="btn btn-green btn-full" onclick="setBug(true)">✓ ENABLE BUG</button>
+            <button class="btn btn-dark btn-full" onclick="setBug(false)">✗ CLEAR BUG</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: Lower Third -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Lower Third</div>
+        <div class="ctrl-section-body">
+          <label class="lbl">Headline *</label>
+          <input class="inp" id="l3-headline" placeholder="Breaking News" style="margin-bottom:5px">
+          <label class="lbl">Subline (optional)</label>
+          <input class="inp" id="l3-subline" placeholder="Correspondent reporting from..." style="margin-bottom:5px">
+          <label class="lbl">Style</label>
+          <select class="inp" id="l3-style" style="margin-bottom:5px">
+            <option value="standard">Standard</option>
+            <option value="breaking">Breaking News</option>
+            <option value="sport">Sport</option>
+            <option value="minimal">Minimal</option>
+          </select>
+          <label class="lbl">Duration (seconds)</label>
+          <input class="inp" type="number" id="l3-dur" value="8" min="1" max="120" style="margin-bottom:8px">
+          <div class="btn-row">
+            <button class="btn btn-red btn-full" onclick="takeL3()" style="font-size:13px;padding:10px">◉ TAKE</button>
+            <button class="btn btn-dark btn-full" onclick="clearL3()">✗ CLEAR</button>
+          </div>
+          <!-- L3 Preview -->
+          <div class="l3-preview" style="margin-top:10px">
+            <div class="l3-bar"></div>
+            <div class="l3-empty" id="g-l3-empty">No lower third active</div>
+            <div id="g-l3-content" style="display:none">
+              <div class="l3-headline" id="g-l3-headline">—</div>
+              <div class="l3-subline" id="g-l3-subline"></div>
+            </div>
+          </div>
+          <div class="meta-grid" style="margin-top:8px">
+            <div class="meta-key">STATUS</div>  <div class="meta-val" id="g-l3-status">OFF</div>
+            <div class="meta-key">STYLE</div>   <div class="meta-val" id="g-l3-style">—</div>
+            <div class="meta-key">DURATION</div><div class="meta-val" id="g-l3-dur">—</div>
+            <div class="meta-key">REMAINING</div><div class="meta-val" id="g-l3-rem">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 3: Graphics state -->
+    <div class="ctrl-col">
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">Current Graphics State</div>
+        <div class="ctrl-section-body">
+          <pre id="g-state-raw" style="font-size:10px;color:var(--text2);font-family:monospace;white-space:pre-wrap;word-break:break-all">loading…</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TAB: LIVE SOURCES
+════════════════════════════════════════════════════════════════ -->
+<div id="view-live" class="view">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);flex:1">
+
+    <!-- Slot list -->
+    <div style="background:var(--panel);padding:0;overflow-y:auto">
+      <div class="ctrl-section-header">Source Slots</div>
+      <div style="padding:12px" id="slot-list">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- Connect new slot -->
+    <div style="background:var(--panel);padding:0;overflow-y:auto">
+      <div class="ctrl-section-header">Connect New Slot</div>
+      <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div>
+          <label class="lbl">Slot Name</label>
+          <select class="inp" id="slot-name">
+            <option value="cam_1">cam_1</option>
+            <option value="cam_2">cam_2</option>
+            <option value="whatsapp_1">whatsapp_1</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">URL (srt:// or file:// or RTMP)</label>
+          <input class="inp" id="slot-url" placeholder="srt://192.0.2.10:1234">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div>
+            <label class="lbl">Preview FPS</label>
+            <input class="inp" type="number" id="slot-fps" value="2" min="0.5" max="10">
+          </div>
+          <div>
+            <label class="lbl">Preview Width</label>
+            <input class="inp" type="number" id="slot-width" value="640">
+          </div>
+        </div>
+        <div>
+          <label class="lbl">FFmpeg Path</label>
+          <input class="inp" id="slot-ffmpeg" value="ffmpeg">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="slot-verify" style="cursor:pointer">
+          <label for="slot-verify" style="cursor:pointer;font-size:11px;color:var(--text2)">Probe URL with FFmpeg before connecting</label>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="slot-preview" checked style="cursor:pointer">
+          <label for="slot-preview" style="cursor:pointer;font-size:11px;color:var(--text2)">Enable JPEG preview</label>
+        </div>
+        <button class="btn btn-purple btn-full" onclick="connectSlot()">📡 CONNECT SLOT</button>
+        <div id="slot-status" style="font-size:10px;color:var(--text2);word-break:break-all;min-height:14px"></div>
+
+        <!-- Live ingest service status -->
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:1px;margin-bottom:6px">LIVE INGEST SERVICE</div>
+          <div class="meta-grid" id="ingest-status-grid">
+            <div class="meta-key">STATUS</div><div class="meta-val" id="is-ok">—</div>
+            <div class="meta-key">CONNECTED</div><div class="meta-val" id="is-conn">—</div>
+            <div class="meta-key">URL</div><div class="meta-val" id="is-url">—</div>
+            <div class="meta-key">PREVIEW</div><div class="meta-val" id="is-preview">—</div>
+            <div class="meta-key">LAST ERR</div><div class="meta-val err" id="is-err">—</div>
+          </div>
+          <button class="btn btn-dark" style="margin-top:6px;font-size:10px" onclick="fetchIngestStatus()">↺ REFRESH</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TAB: EVENT LOG
+════════════════════════════════════════════════════════════════ -->
+<div id="view-log" class="view">
+  <div class="log-view">
+    <div class="log-toolbar">
+      <span style="font-size:10px;color:var(--text2);font-weight:700;letter-spacing:1px">LIVE EVENT STREAM</span>
+      <div style="margin-left:auto;display:flex;gap:5px">
+        <button class="btn btn-dark" onclick="document.getElementById('event-log').innerHTML=''" style="padding:3px 8px;font-size:10px">CLEAR</button>
+        <input type="text" id="log-filter" class="inp" placeholder="filter…" style="max-width:140px;padding:3px 8px">
+      </div>
+    </div>
+    <div id="event-log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ STATUS BAR ═══════════════════════════ -->
+<div class="statusbar">
+  <div class="sb-item"><b>STATE</b> <span id="sb-state">—</span></div>
+  <div class="sb-item"><b>PGM</b> <span id="sb-pgm">—</span></div>
+  <div class="sb-item"><b>FRAMES</b> <span id="sb-frames">—</span></div>
+  <div class="sb-item"><b>DRIFT</b> <span id="sb-drift">—</span></div>
+  <div class="sb-item"><b>GUARD</b> <span id="sb-guard">0</span></div>
+  <div class="sb-item" style="margin-left:auto"><b>BUG</b> <span id="sb-bug">OFF</span></div>
+  <div class="sb-item"><b>L3</b> <span id="sb-l3">OFF</span></div>
+</div>
+
+<!-- ═══════════════════════════ JAVASCRIPT ═══════════════════════════ -->
+<script>
+const API = window.location.origin;
+let ws = null, wsDelay = 1000, _st = {};
+
+// ── Tab nav ────────────────────────────────────────────────────────────────
+function showTab(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── Status polling ─────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch(API + '/api/status');
+    if (r.ok) { _st = await r.json(); applyStatus(_st); }
+  } catch(_) {}
+  setTimeout(pollStatus, 2000);
+}
+
+function applyStatus(s) {
+  // ── Program banner
+  const src = s.program_source || 'automation';
+  e('pgm-source').textContent = src.toUpperCase();
+  e('pgm-source').className   = src;
+  e('on-air-pill').className  = 'on-air-pill' + (src === 'live' ? '' : ' off');
+
+  // ── Status bar
+  e('sb-state').textContent  = s.state || '—';
+  e('sb-pgm').textContent    = src.toUpperCase();
+  e('sb-frames').textContent = fmt(s.frame_count);
+  e('sb-drift').textContent  = s.drift_ms != null ? s.drift_ms + 'ms' : '—';
+  e('sb-guard').textContent  = s.guard_violation_count || 0;
+
+  // ── MultiView Pane A
+  e('mv-state').textContent    = s.state || '—';
+  e('mv-current').textContent  = s.current_media_id || '—';
+  e('mv-next').textContent     = s.next_media_id || '—';
+  e('mv-timeline').textContent = s.timeline_seconds != null ? s.timeline_seconds + 's' : '—';
+  e('mv-frames').textContent   = fmt(s.frame_count);
+  e('mv-drift').textContent    = s.drift_ms != null ? s.drift_ms + 'ms' : '—';
+  e('mv-violations').textContent = s.guard_violation_count || 0;
+  e('paneA-dot').classList.toggle('active', src === 'automation');
+
+  // ── MultiView Pane B (live)
+  const live = s.live || {};
+  e('mv-live-mode').textContent  = live.mode || 'idle';
+  e('mv-live-state').textContent = live.state || 'idle';
+  e('mv-live-input').textContent = live.input || '—';
+  e('mv-live-ready').textContent = live.ready ? 'YES' : 'NO';
+  e('mv-live-buffer').textContent = live.buffer_depth != null ? live.buffer_depth + ' fr' : '—';
+  e('mv-live-err').textContent   = live.last_error || '—';
+  e('paneB-badge').textContent   = (live.mode || 'IDLE').toUpperCase();
+  e('paneB-badge').className     = 'badge ' + stateBadge(live.state);
+  e('paneB-dot').classList.toggle('active', src === 'live');
+
+  // Live preview tiles refresh (v4.6)
+  const tiles = ['cam_1','cam_2','cam_3','cam_4'];
+  for (const n of tiles) {
+    const img = document.getElementById('live-' + n);
+    if (img) img.src = API + '/api/live/preview/' + n + '.jpg?t=' + Date.now();
+  }
+
+  // ── MultiView Pane C (next)
+  e('paneC-next').textContent  = s.next_media_id || '—';
+  e('paneC-next-title').textContent = s.next_media_id || 'No next item';
+  e('paneC-holds').textContent = s.hold_count || 0;
+  e('paneC-emerg').textContent = s.emergency_count || 0;
+  e('paneC-drops').textContent = s.frame_drop_count || 0;
+  e('paneC-buf').textContent   = s.rt_buffer_depth != null ? s.rt_buffer_depth + ' fr' : '—';
+  e('paneC-ring').textContent  = s.ring_pending || 0;
+
+  // ── Control tab mirrors
+  e('c-state').textContent     = s.state || '—';
+  e('c-current').textContent   = s.current_media_id || '—';
+  e('c-next').textContent      = s.next_media_id || '—';
+  e('c-timeline').textContent  = s.timeline_seconds != null ? s.timeline_seconds + 's' : '—';
+  e('c-frames').textContent    = fmt(s.frame_count);
+  e('c-drift').textContent     = s.drift_ms != null ? s.drift_ms + 'ms' : '—';
+  e('c-holds').textContent     = s.hold_count || 0;
+  e('c-drops').textContent     = s.frame_drop_count || 0;
+  e('c-violations').textContent = s.guard_violation_count || 0;
+  e('c-ring').textContent      = s.ring_pending || 0;
+
+  const ctrl_pgm = e('ctrl-pgm-label');
+  ctrl_pgm.textContent = '● ' + src.toUpperCase();
+  ctrl_pgm.style.color = src === 'live' ? 'var(--red)' : 'var(--green)';
+
+  e('c-live-state').textContent = live.state || 'idle';
+  e('c-live-ready').textContent = live.ready ? 'YES' : 'NO';
+  e('c-live-err').textContent   = live.last_error || '—';
+
+  // Guard violations list
+  const gv = s.guard_recent_violations || [];
+  e('c-guard-list').innerHTML = gv.length
+    ? gv.map(v => `<div style="color:var(--red)">${v.op} @ ${v.ts}</div>`).join('')
+    : '<span style="color:var(--muted)">None recorded.</span>';
+
+  // ── Graphics state (Pane D + Graphics tab)
+  const gfx = s.graphics;
+  if (gfx) {
+    applyGraphics(gfx);
+  }
+
+  // ── Slots (Live Sources tab)
+  const slots = s.live_slots || [];
+  if (slots.length) {
+    renderSlots(slots);
+    // update tile labels (frame freshness / on-air)
+    const m = {};
+    for (const sl of slots) m[sl.name] = sl;
+    _slotsMap = m;
+    for (const n of tiles) {
+      const sl = m[n];
+      const badge = document.getElementById('tile-badge-' + n);
+      if (!badge) continue;
+      if (!sl) {
+        badge.textContent = '—';
+        badge.className = 'tile-badge';
+        continue;
+      }
+      const age = sl.frame_age_s;
+      const ageTxt = (age == null) ? 'no frame' : (age.toFixed(1) + 's');
+      const ok = !!sl.frame_ok;
+      const onAir = !!sl.on_air;
+      badge.textContent = (onAir ? 'ON AIR • ' : '') + (ok ? 'OK • ' : 'STALE • ') + ageTxt;
+      badge.className = 'tile-badge ' + (onAir ? 'tile-onair' : (ok ? 'tile-ok' : 'tile-bad'));
+    }
+  }
+}
+
+function applyGraphics(gfx) {
+  const bug = gfx.bug || {};
+  const l3  = gfx.lower_third || {};
+
+  // Pane D
+  e('mv-bug').textContent      = bug.enabled ? 'ON (' + (bug.position||'') + ')' : 'OFF';
+  e('mv-bug').style.color      = bug.enabled ? 'var(--green)' : 'var(--text2)';
+  e('mv-bug-text').textContent = bug.text || '—';
+  e('mv-l3-style').textContent = l3.style || '—';
+  e('mv-l3-rem').textContent   = l3.remaining_s != null ? l3.remaining_s + 's' : '—';
+  e('mv-guard-v').textContent  = _st.guard_violation_count || 0;
+  e('mv-ring-drop').textContent = _st.ring_dropped || 0;
+
+  // L3 in multiview pane D
+  showL3Preview('mv', l3);
+
+  // Status bar
+  e('sb-bug').textContent = bug.enabled ? 'ON' : 'OFF';
+  e('sb-bug').style.color = bug.enabled ? 'var(--green)' : 'var(--text2)';
+  e('sb-l3').textContent  = l3.enabled ? 'ON AIR' : 'OFF';
+  e('sb-l3').style.color  = l3.enabled ? 'var(--red)' : 'var(--text2)';
+
+  // Graphics tab
+  e('g-bug-status').textContent  = bug.enabled ? 'ENABLED' : 'DISABLED';
+  e('g-bug-status').style.color  = bug.enabled ? 'var(--green)' : 'var(--text2)';
+  e('g-bug-text').textContent    = bug.text || '—';
+  e('g-bug-pos').textContent     = bug.position || '—';
+  e('g-bug-opacity').textContent = bug.opacity != null ? bug.opacity : '—';
+
+  e('g-l3-status').textContent = l3.enabled ? '🔴 ON AIR' : 'OFF';
+  e('g-l3-status').style.color = l3.enabled ? 'var(--red)' : 'var(--text2)';
+  e('g-l3-style').textContent  = l3.style || '—';
+  e('g-l3-dur').textContent    = l3.duration_s != null ? l3.duration_s + 's' : '—';
+  e('g-l3-rem').textContent    = l3.remaining_s != null ? l3.remaining_s + 's left' : '—';
+  showL3Preview('g', l3);
+
+  e('g-state-raw').textContent = JSON.stringify(gfx, null, 2);
+}
+
+function showL3Preview(prefix, l3) {
+  const empty   = e(prefix + '-l3-empty');
+  const content = e(prefix + '-l3-content');
+  if (l3 && l3.enabled && !l3.expired) {
+    empty.style.display   = 'none';
+    content.style.display = 'block';
+    e(prefix + '-l3-headline').textContent = l3.headline || '';
+    const sub = e(prefix + '-l3-subline');
+    sub.textContent    = l3.subline || '';
+    sub.style.display  = l3.subline ? 'block' : 'none';
+  } else {
+    empty.style.display   = 'block';
+    content.style.display = 'none';
+  }
+}
+
+// ── Slot rendering ─────────────────────────────────────────────────────────
+function renderSlots(slots) {
+  e('slot-list').innerHTML = slots.map(s => `
+    <div class="slot-card">
+      <div class="slot-header">
+        <div class="slot-name">${s.name}</div>
+        <span class="badge ${s.connected ? 'badge-ready' : 'badge-idle'}">
+          ${s.connected ? 'CONNECTED' : 'IDLE'}
+        </span>
+        ${s.on_air ? '<span class="badge badge-live">ON AIR</span>' : ''}
+      </div>
+      <div class="slot-meta">
+        <div class="slot-key">URL</div>      <div class="slot-val">${s.url || '—'}</div>
+        <div class="slot-key">UPTIME</div>   <div class="slot-val">${s.connected ? s.uptime_s+'s' : '—'}</div>
+        <div class="slot-key">PREVIEW</div>  <div class="slot-val">${s.preview_available ? 'YES' : 'NO'}</div>
+        <div class="slot-key">FRAME AGE</div><div class="slot-val">${s.frame_age_s == null ? '—' : (s.frame_ok ? s.frame_age_s.toFixed(1)+'s' : '<span style="color:var(--red)">'+s.frame_age_s.toFixed(1)+'s</span>')}</div>
+        <div class="slot-key">ERROR</div>    <div class="slot-val" style="color:var(--red)">${s.last_error || '—'}</div>
+      </div>
+      <div class="slot-btn-row">
+        ${s.connected && !s.on_air ? `<button class="btn btn-outline-red" onclick="slotOnAir('${s.name}')" style="font-size:10px;padding:4px 8px">▶ ON AIR</button>` : ''}
+        ${s.connected ? `<button class="btn btn-dark" onclick="slotDisconnect('${s.name}')" style="font-size:10px;padding:4px 8px">■ DISCONNECT</button>` : ''}
+        ${s.preview_available ? `<button class="btn btn-blue" onclick="openPreview('${s.name}')" style="font-size:10px;padding:4px 8px">🔍 PREVIEW</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+
+function setPVW(name){
+  // PVW can be: a live slot name OR special modes: next_auto, program
+  const mode = (name === 'next_auto' || name === 'program') ? name : 'live';
+  const slot = (mode === 'live') ? name : (_pvwSlot || 'cam_1');
+  if (mode === 'live') { _pvwSlot = name; }
+
+  // Persist PVW selection in backend so renderer can generate /preview/pvw.jpg
+  fetch(API + '/api/pvw/set', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ mode: mode, slot: slot })
+  }).catch(()=>{});
+
+  const img = e('pvw-preview');
+  if (img){
+    img.src = API + '/api/renderer/preview/pvw.jpg?ts=' + Date.now();
+  }
+  e('pvw-slot').textContent = (mode === 'live') ? slot : (mode === 'next_auto' ? 'NEXT (AUTO)' : 'PROGRAM');
+}
+
+function updatePVWMode(status, runtime){
+  // When LIVE is on-air, PVW becomes "NEXT automation" still from renderer (no selection)
+  try{
+    const src = status && status.program && status.program.source ? String(status.program.source) : 'automation';
+    if (src === 'live'){
+      const sel = e('pvw-select');
+      if (sel){ sel.disabled = true; }
+      e('pvw-badge').textContent = 'NEXT (AUTO)';
+      e('pvw-badge').className = 'badge badge-live';
+      const img = e('pvw-preview');
+      if (img){ img.src = API + '/api/renderer/preview/pvw.jpg?ts=' + Date.now();
+      const img2 = e('next2-preview');
+      if (img2){ img2.src = API + '/api/renderer/preview/automation_next2.jpg?ts=' + Date.now(); } }
+      e('pvw-slot').textContent = 'NEXT (AUTO)';
+      e('pvw-badge-text').textContent = 'AUTO NEXT';
+      return;
+    }
+  }catch(ex){}
+
+  // Otherwise PVW is a live slot preview
+  const sel = e('pvw-select');
+  if (sel){ sel.disabled = false; }
+  e('pvw-badge').textContent = 'PVW';
+  e('pvw-badge').className = 'badge badge-idle';
+  setPVW(_pvwSlot || (sel ? sel.value : 'cam_1'));
+}
+
+}
+
+function slotReconnect(name){
+  const sl = _slotsMap[name];
+  const url = sl && sl.url ? sl.url : '';
+  if (!url){
+    addLog('Reconnect: no remembered URL for ' + name, 'log-warn');
+    return;
+  }
+  // best-effort: disconnect then connect
+  doPost('/api/live/slots/' + name + '/disconnect').then(()=> {
+    return doPost('/api/live/slots/connect', {name, url, verify:false, preview:true, preview_fps:2, preview_width:640, ffmpeg_path:''});
+  });
+}
+
+async function pollRuntime(){
+  try{
+    const r = await fetch(API + '/api/debug/runtime');
+    if (r.ok){
+      _rt = await r.json();
+      applyRuntime(_rt);
+    }
+  }catch(_){}
+  setTimeout(pollRuntime, 2000);
+}
+
+function applyRuntime(rt){
+  // guard ack
+  const g = rt.guard || {};
+  const ack = g.ack || {};
+  if (e('ack-last')) e('ack-last').textContent = ack.last_ack_ts ? new Date(ack.last_ack_ts*1000).toLocaleString() : '—';
+  if (e('ack-count')) e('ack-count').textContent = ack.ack_count != null ? ack.ack_count : '0';
+
+  // renderer health
+  const ren = rt.renderer || {};
+  if (e('mv-renderer')) e('mv-renderer').textContent = ren.ok ? 'OK' : (ren.error ? 'ERR' : '—');
+
+  // PVW status from slots map if present
+  const sl = _slotsMap[_pvwSlot];
+  if (sl){
+    e('pvw-slot').textContent = sl.name;
+    e('pvw-onair').textContent = sl.on_air ? 'YES' : 'NO';
+    const age = sl.frame_age_s;
+    e('pvw-age').textContent = age==null ? '—' : (age.toFixed(1)+'s');
+    e('pvw-ok').textContent = sl.frame_ok ? 'OK' : 'STALE';
+    e('pvw-badge-text').textContent = (sl.on_air ? 'ON AIR • ' : '') + (sl.frame_ok ? 'OK • ' : 'STALE • ') + (age==null?'no frame':age.toFixed(1)+'s');
+    e('pvw-badge-text').className = 'tile-badge ' + (sl.on_air ? 'tile-onair ' : '') + (sl.frame_ok ? 'tile-ok' : 'tile-bad');
+    // refresh PVW image
+    const img = e('pvw-preview');
+    if (img) img.src = API + '/api/live/preview/' + _pvwSlot + '.jpg?ts=' + Date.now();
+  }
+}
+function slotOnAir(name) {
+  doPost('/api/live/slots/' + name + '/on_air');
+}
+
+function slotDisconnect(name) {
+  doPost('/api/live/slots/' + name + '/disconnect');
+}
+
+function openPreview(name) {
+  window.open(API + '/api/live/preview/' + name + '.jpg', '_blank');
+}
+
+async function fetchIngestStatus() {
+  try {
+    const cfg = _st.config || {};
+    const ingestBase = 'http://127.0.0.1:8020';
+    const r = await fetch(ingestBase + '/status');
+    if (r.ok) {
+      const d = await r.json();
+      e('is-ok').textContent      = 'online';
+      e('is-ok').style.color      = 'var(--green)';
+      e('is-conn').textContent    = d.connected ? 'YES' : 'NO';
+      e('is-url').textContent     = d.url || '—';
+      e('is-preview').textContent = d.preview_enabled ? 'YES' : 'NO';
+      e('is-err').textContent     = d.last_error || '—';
+    }
+  } catch(ex) {
+    e('is-ok').textContent   = 'offline';
+    e('is-ok').style.color   = 'var(--red)';
+  }
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function connectWS() {
+  const url = API.replace(/^http/, 'ws') + '/events';
+  ws = new WebSocket(url);
+  ws.onopen = () => {
+    wsDelay = 1000;
+    e('ws-badge').textContent  = '● LIVE';
+    e('ws-badge').className    = 'ws-badge live';
+    addLog('WebSocket connected', 'info');
+  };
+  ws.onmessage = ev => {
+    try {
+      const d = JSON.parse(ev.data);
+      if (d.type === 'ping') return;
+
+      // Classify event type for coloring
+      const state = d.state || '';
+      let cls = 'log-info';
+      if (d.severity === 'warning') cls = 'log-warn';
+      if (d.severity === 'error' || d.severity === 'critical') cls = 'log-err';
+      if (state.startsWith('PROGRAM_SOURCE') || state.startsWith('SWITCH')) cls = 'log-live';
+      if (state.startsWith('BUG') || state.startsWith('L3')) cls = 'log-gfx';
+      if (state.startsWith('SLOT') || state.startsWith('SRT')) cls = 'log-src';
+
+      const msg = [state, d.warning ? '⚠ ' + d.warning : ''].filter(Boolean).join(' — ');
+      addLog(msg, cls);
+
+      // If graphics event, refresh graphics state
+      if (state.startsWith('BUG') || state.startsWith('L3')) {
+        fetchGraphics();
+      }
+    } catch(_) {}
+  };
+  ws.onclose = () => {
+    e('ws-badge').textContent = '● OFFLINE';
+    e('ws-badge').className   = 'ws-badge';
+    setTimeout(connectWS, wsDelay);
+    wsDelay = Math.min(wsDelay * 2, 16000);
+  };
+}
+
+async function fetchGraphics() {
+  try {
+    const r = await fetch(API + '/api/graphics/state');
+    if (r.ok) applyGraphics(await r.json());
+  } catch(_) {}
+}
+
+function addLog(msg, cls) {
+  const filter = e('log-filter').value.trim().toLowerCase();
+  if (filter && !msg.toLowerCase().includes(filter)) return;
+  const log = e('event-log');
+  const row = document.createElement('div');
+  row.className = 'log-entry';
+  const ts = new Date().toLocaleTimeString('en-GB', {hour12:false});
+  row.innerHTML = `<span class="log-ts">${ts}</span><span class="${cls}">${msg}</span>`;
+  log.appendChild(row);
+  while (log.children.length > 500) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ── API calls ──────────────────────────────────────────────────────────────
+async function doPost(path, body = {}) {
+  try {
+    const r = await fetch(API + path, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      addLog(`POST ${path} → ${r.status}: ${data.detail || '?'}`, 'log-err');
+    } else {
+      addLog(`POST ${path} → OK`, 'log-info');
+    }
+    return data;
+  } catch(ex) {
+    addLog(`POST ${path} → network error: ${ex}`, 'log-err');
+  }
+}
+
+async function ackGuard() {
+  try {
+    const r = await fetch(API + '/api/guard/ack', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+    });
+    const j = await r.json();
+    if (j && j.ok) {
+      const at = j.ack && j.ack.last_ack_at ? new Date(j.ack.last_ack_at*1000).toLocaleTimeString() : '—';
+      e('c-guard-ack').textContent = 'ACK @ ' + at + ' • count=' + (j.ack.acked_violation_count ?? 0);
+    } else {
+      e('c-guard-ack').textContent = 'ACK failed';
+    }
+  } catch (e1) {
+    e('c-guard-ack').textContent = 'ACK error';
+  }
+}
+
+function switchSource(src) {
+  doPost('/api/control/program/source', {source: src}).then(() => {
+    const msg = e('switch-status');
+    if (msg) msg.textContent = `Switched to ${src}`;
+  });
+}
+
+function stageLiveFile() {
+  const path = e('live-file-path').value.trim();
+  if (!path) return;
+  doPost('/api/live/file', {path});
+}
+
+function connectSRT() {
+  const url  = e('srt-url').value.trim();
+  const name = e('srt-name').value.trim() || 'cam_1';
+  if (!url) return;
+  doPost('/api/live/srt/connect', {name, url, verify: false, preview: true});
+}
+
+function loadPlaylistFile() {
+  const path = e('playlist-path').value.trim();
+  if (!path) return;
+  const filename = path.split(/[\\/]/).pop();
+  doPost('/api/playlist/load_file?path=' + encodeURIComponent(filename));
+}
+
+function doDropIn() {
+  const path  = e('di-path').value.trim();
+  const title = e('di-title').value.trim();
+  const dur   = parseFloat(e('di-dur').value) || null;
+  if (!path || !title) return;
+  doPost('/api/dropin', {media_path: path, title, duration_seconds: dur});
+}
+
+function setBug(enabled) {
+  const body = {
+    enabled,
+    text:     e('bug-text').value.trim() || null,
+    position: e('bug-pos').value,
+    opacity:  parseFloat(e('bug-opacity').value) || 0.85,
+  };
+  if (enabled) {
+    doPost('/api/graphics/bug/set', body).then(fetchGraphics);
+  } else {
+    doPost('/api/graphics/bug/clear').then(fetchGraphics);
+  }
+}
+
+function takeL3() {
+  const headline = e('l3-headline').value.trim();
+  if (!headline) { alert('Headline required'); return; }
+  doPost('/api/graphics/l3/set', {
+    headline,
+    subline:    e('l3-subline').value.trim() || null,
+    style:      e('l3-style').value,
+    duration_s: parseFloat(e('l3-dur').value) || 8,
+  }).then(fetchGraphics);
+}
+
+function clearL3() {
+  doPost('/api/graphics/l3/clear').then(fetchGraphics);
+}
+
+async function connectSlot() {
+  const name = e('slot-name').value;
+  const url  = e('slot-url').value.trim();
+  if (!url) { alert('URL required'); return; }
+  e('slot-status').textContent = 'Connecting…';
+  const r = await doPost('/api/live/slots/connect', {
+    name, url,
+    verify:        e('slot-verify').checked,
+    preview:       e('slot-preview').checked,
+    preview_fps:   parseFloat(e('slot-fps').value),
+    preview_width: parseInt(e('slot-width').value),
+    ffmpeg_path:   e('slot-ffmpeg').value.trim(),
+  });
+  e('slot-status').textContent = r ? JSON.stringify(r.slot?.connected ? 'Connected' : 'Failed') : 'error';
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function e(id) { return document.getElementById(id); }
+function fmt(n) { return n != null ? Number(n).toLocaleString() : '—'; }
+function stateBadge(s) {
+  const m = {idle:'badge-idle',staging:'badge-staging',ready:'badge-ready',
+             active:'badge-active',lost:'badge-error',error:'badge-error'};
+  return m[s] || 'badge-idle';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+pollStatus();
+  pollRuntime();
+connectWS();
+fetchGraphics();
+setInterval(fetchGraphics, 5000);
+setInterval(fetchIngestStatus, 10000);
+
+// Program preview refresh (renderer proxy)
+function refreshProgramPreview(){
+  const img = document.getElementById("pgm-preview");
+  if(!img) return;
+  const bust = Date.now();
+  img.src = `/api/renderer/preview/program.jpg?b=${bust}`;
+}
+setInterval(refreshProgramPreview, 800);
+</script>
+</body>
+</html>

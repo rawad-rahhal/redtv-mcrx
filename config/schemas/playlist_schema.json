@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "REDTV Playlist",
+  "type": "object",
+  "required": ["playlist_id", "channel", "items"],
+  "properties": {
+    "playlist_id":    { "type": "string", "format": "uuid" },
+    "channel":        { "type": "string" },
+    "build_date":     { "type": ["string", "null"] },
+    "build_by":       { "type": "string", "enum": ["manual", "nashra_ai", "import"] },
+    "correlation_id": { "type": ["string", "null"] },
+    "warnings":       { "type": "array", "items": { "type": "string" } },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["slot_id", "slot_type", "title"],
+        "properties": {
+          "slot_id":          { "type": "string" },
+          "slot_type":        { "type": "string", "enum": ["program","live_in","filler","slate","break"] },
+          "media_id":         { "type": ["string", "null"] },
+          "media_path":       { "type": ["string", "null"] },
+          "title":            { "type": "string" },
+          "scheduled_tc":     { "type": ["string", "null"] },
+          "duration_seconds": { "type": ["number", "null"], "minimum": 0 },
+          "trim_in":          { "type": "number", "minimum": 0 },
+          "trim_out":         { "type": ["number", "null"] },
+          "loop":             { "type": "boolean" },
+          "auto_next":        { "type": "boolean" },
+          "ai_confidence":    { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "override_note":    { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

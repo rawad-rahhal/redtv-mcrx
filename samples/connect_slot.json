@@ -1,0 +1,9 @@
+{
+  "name": "cam_1",
+  "url": "srt://192.0.2.10:1234",
+  "verify": false,
+  "preview": true,
+  "preview_fps": 2.0,
+  "preview_width": 640,
+  "ffmpeg_path": "ffmpeg"
+}

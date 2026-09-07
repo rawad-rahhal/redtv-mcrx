@@ -1,0 +1,23 @@
+
+customer:
+  name: "SmallTV Demo"
+  region: "MENA"
+features:
+  enable_live_ingest: true
+  enable_graphics: true
+program_renderer:
+  udp_out: "udp://127.0.0.1:10000?pkt_size=1316"
+live_ingest:
+  slots:
+    - slot_id: "cam1"
+      url: "srt://0.0.0.0:9001?mode=listener"
+    - slot_id: "cam2"
+      url: "srt://0.0.0.0:9002?mode=listener"
+
+
+live_slots:
+  default_urls:
+    cam_1: "srt://0.0.0.0:10000?mode=listener"
+    cam_2: "srt://0.0.0.0:10001?mode=listener"
+    cam_3: "srt://0.0.0.0:10002?mode=listener"
+    cam_4: "srt://0.0.0.0:10003?mode=listener"

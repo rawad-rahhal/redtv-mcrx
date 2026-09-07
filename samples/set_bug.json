@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "text": "LIVE",
+  "position": "bottom_right",
+  "opacity": 0.85,
+  "safe_margins": true
+}

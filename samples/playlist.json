@@ -1,0 +1,87 @@
+{
+  "playlist_id": "a1b2c3d4-0001-0001-0001-000000000001",
+  "channel": "REDTV",
+  "build_date": "2025-01-15",
+  "build_by": "nashra_ai",
+  "correlation_id": "corr-0001",
+  "warnings": [
+    "Low confidence match: 'Morning Headlines' -> 'Morning News Headlines' (conf=0.82)"
+  ],
+  "items": [
+    {
+      "slot_id": "slot-0001",
+      "slot_type": "program",
+      "media_id": "REDTV_00001",
+      "media_path": "//NAS-SERVER/CHANNEL/media/REDTV_00001.mp4",
+      "title": "Morning News Headlines",
+      "scheduled_tc": "06:00:00:00",
+      "duration_seconds": 1800.0,
+      "trim_in": 0.0,
+      "trim_out": null,
+      "loop": false,
+      "auto_next": true,
+      "ai_confidence": 0.82,
+      "override_note": null
+    },
+    {
+      "slot_id": "slot-0002",
+      "slot_type": "break",
+      "media_id": "REDTV_00020",
+      "media_path": "//NAS-SERVER/CHANNEL/media/REDTV_00020.mp4",
+      "title": "Commercial Break 01",
+      "scheduled_tc": "06:30:00:00",
+      "duration_seconds": 180.0,
+      "trim_in": 0.0,
+      "trim_out": null,
+      "loop": false,
+      "auto_next": true,
+      "ai_confidence": 1.0,
+      "override_note": null
+    },
+    {
+      "slot_id": "slot-0003",
+      "slot_type": "program",
+      "media_id": "REDTV_00002",
+      "media_path": "//NAS-SERVER/CHANNEL/media/REDTV_00002.mp4",
+      "title": "Interview: Technology Special",
+      "scheduled_tc": "06:33:00:00",
+      "duration_seconds": 2700.0,
+      "trim_in": 0.0,
+      "trim_out": null,
+      "loop": false,
+      "auto_next": true,
+      "ai_confidence": 1.0,
+      "override_note": null
+    },
+    {
+      "slot_id": "slot-0004",
+      "slot_type": "filler",
+      "media_id": "REDTV_00050",
+      "media_path": "//NAS-SERVER/CHANNEL/media/REDTV_00050.mp4",
+      "title": "Filler: Channel Bumper",
+      "scheduled_tc": null,
+      "duration_seconds": 30.0,
+      "trim_in": 0.0,
+      "trim_out": null,
+      "loop": true,
+      "auto_next": true,
+      "ai_confidence": null,
+      "override_note": "Auto-inserted filler"
+    },
+    {
+      "slot_id": "slot-0005",
+      "slot_type": "slate",
+      "media_id": "SLATE_001",
+      "media_path": "//NAS-SERVER/CHANNEL/media/slate/emergency.mp4",
+      "title": "EMERGENCY SLATE",
+      "scheduled_tc": null,
+      "duration_seconds": 30.0,
+      "trim_in": 0.0,
+      "trim_out": null,
+      "loop": true,
+      "auto_next": false,
+      "ai_confidence": null,
+      "override_note": "Standby emergency"
+    }
+  ]
+}

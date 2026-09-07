@@ -1,0 +1,8 @@
+{
+  "headline": "Breaking News",
+  "subline": "Our correspondent reports from the field",
+  "style": "breaking",
+  "duration_s": 8.0,
+  "animate_in": "left",
+  "animate_out": "left"
+}

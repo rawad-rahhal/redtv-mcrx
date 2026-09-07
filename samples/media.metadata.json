@@ -1,0 +1,29 @@
+{
+  "media_id": "000001",
+  "title": "Morning News Headlines",
+  "original_filename": "morning_news_20250115.mp4",
+  "normalized_path": "//NAS-SERVER/CHANNEL/ingest/done/000001.mp4",
+  "duration_seconds": 1800.0,
+  "norm_state": "done",
+  "ingest_job_id": "job-abc12345",
+  "created_utc": "2025-01-15T03:45:00Z",
+  "tags": ["news", "morning", "headlines"],
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "frame_rate": "25",
+    "scan_type": "interlaced",
+    "field_order": "tff",
+    "color_space": "bt709",
+    "pixel_format": "yuv422p",
+    "bitrate_kbps": 8000,
+    "codec": "h264"
+  },
+  "audio": {
+    "codec": "aac",
+    "sample_rate": 48000,
+    "channels": 2,
+    "bitrate_kbps": 192,
+    "layout": "stereo"
+  }
+}

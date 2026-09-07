@@ -1,0 +1,133 @@
+# RED TV MCRX v4.16.2
+# Public baseline configuration — review all paths and network identifiers before deployment.
+# config/redtv.yaml
+# ============================================================
+
+channel:
+  name:        "REDTV"
+  standard:    "1080i25"
+  field_order: "tff"
+  color_space: "bt709"
+
+paths:
+  nas_root:            "//NAS-SERVER/CHANNEL"
+  media_library:       "//NAS-SERVER/CHANNEL/media"
+  ingest_watch:        "//NAS-SERVER/CHANNEL/ingest/drop"
+  ingest_queue:        "//NAS-SERVER/CHANNEL/ingest/queue.jsonl"
+  ingest_done:         "//NAS-SERVER/CHANNEL/ingest/done"
+  ingest_quarantine:   "//NAS-SERVER/CHANNEL/ingest/quarantine"
+  counter_file:        "//NAS-SERVER/CHANNEL/ingest/counter.txt"  # 6-digit sequential counter
+  playlist_dir:        "//NAS-SERVER/CHANNEL/playlists"
+  emergency_slate:     "//NAS-SERVER/CHANNEL/media/slate/emergency.mp4"
+  log_dir:             "logs"
+
+playout:
+  pre_roll_frames:    25       # frames to buffer before swap (1 second at 25fps)
+  frame_interval_ms:  40       # 25fps = 40ms
+  hold_frame_timeout: 5.0      # seconds in HOLD before auto-emergency
+  emergency_preload:  true
+  drift_warn_ms:      20       # ms drift → WARNING event
+  drift_error_ms:     100      # ms drift → ERROR event
+
+guard:
+  enforce:            true     # raise RTViolationError on violation
+  force_hold:         true     # force FSM → HOLD_FRAME on violation
+  #
+  # patch_open / patch_subprocess are false in normal production.
+  # CONFIDENCE PROFILE — enable these to catch any hidden RT I/O during
+  # a dry-run validation session, then revert to false for live TX:
+  #   patch_open:       true
+  #   patch_subprocess: true
+  patch_open:         false
+  patch_subprocess:   false
+  patch_logging:      true     # defer RT log calls to in-memory ring (always on)
+  rt_log_buffer_size: 256
+
+media_factory:
+  workers:          2
+  ffmpeg_binary:    "ffmpeg"
+  ffprobe_binary:   "ffprobe"
+  timeout_seconds:  3600       # 1-hour hard timeout per job
+  retry_transient:  3
+  retry_delay_s:    5
+  # Output naming: 000001.mp4, 000002.mp4 ... (6-digit, counter.txt on NAS)
+  presets:
+    broadcast_1080i25:
+      vcodec:         "libx264"
+      resolution:     "1920x1080"
+      scan_type:      "interlaced"
+      field_order:    "tff"
+      color_space:    "bt709"
+      pix_fmt:        "yuv422p"
+      crf:            18
+      acodec:         "aac"
+      audio_rate:     48000
+      audio_channels: 2
+      audio_bitrate:  "192k"
+      container:      "mp4"
+    vertical_safe:
+      vcodec:         "libx264"
+      resolution:     "1080x1920"
+      scan_type:      "progressive"
+      field_order:    "progressive"
+      color_space:    "bt709"
+      pix_fmt:        "yuv420p"
+      crf:            20
+      acodec:         "aac"
+      audio_rate:     48000
+      audio_channels: 2
+      audio_bitrate:  "192k"
+      container:      "mp4"
+
+automation_ai:
+  model:                 "nashra_v1"
+  fallback_slate_id:     "SLATE_001"
+  fuzzy_threshold:       0.6
+  confidence_warn_below: 0.75
+  log_correlation:       true
+
+api_gateway:
+  host:            "0.0.0.0"
+  port:            8000
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+  ws_ping_interval: 10    # seconds
+
+logging:
+  level:        "INFO"
+  format:       "json"
+  rotation:     "midnight"
+  backup_count: 30
+
+live:
+  mode_default:              "idle"
+  file_staging_dir:          "//NAS-SERVER/CHANNEL/live/staged"
+  srt_ingest_service_url:    "http://127.0.0.1:8020"
+  refuse_switch_if_not_ready: true   # safest default — never switch blind
+  auto_fallback_to_emergency: false  # if live lost: hold, not emergency
+  ffmpeg_path:                "ffmpeg"
+  connect_timeout_s:          3.0
+
+
+program_renderer:
+  overlay_dir: "./runtime/renderer_overlay"
+  enabled: true
+  bind_host: 0.0.0.0
+  port: 8030
+  base_url: "http://127.0.0.1:8030"
+  ffmpeg_path: "ffmpeg"
+  # program output mode:
+  #   - udp : MPEG-TS over UDP (always available)
+  #   - ndi : NDI via FFmpeg libndi_newtek muxer (requires an FFmpeg build with NDI support)
+  output_mode: "udp"
+  output_udp: "udp://127.0.0.1:5000?pkt_size=1316"
+  # NDI options (used when output_mode: ndi)
+  # Network-visible source name. Coordinate changes with configured NDI receivers.
+  ndi_name: "REDTV_MCRX_PROGRAM"
+  # If your FFmpeg build expects a URL-like target for NDI, set ndi_url and it will override ndi_name.
+  # ndi_url: "REDTV_MCRX_PROGRAM"
+  preview_dir: "./runtime/previews"
+  preview_fps: 2
+  fontfile: "C:/Windows/Fonts/arial.ttf"
+  draw_safe_margin_px: 40

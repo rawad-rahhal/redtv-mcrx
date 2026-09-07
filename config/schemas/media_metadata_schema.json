@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "REDTV Media Metadata",
+  "type": "object",
+  "required": ["media_id", "title", "original_filename", "normalized_path", "duration_seconds", "video", "audio"],
+  "properties": {
+    "media_id":          { "type": "string" },
+    "title":             { "type": "string" },
+    "original_filename": { "type": "string" },
+    "normalized_path":   { "type": "string" },
+    "duration_seconds":  { "type": "number", "minimum": 0.001 },
+    "norm_state":        { "type": "string", "enum": ["pending","running","done","failed","quarantine"] },
+    "ingest_job_id":     { "type": ["string", "null"] },
+    "created_utc":       { "type": ["string", "null"] },
+    "tags":              { "type": "array", "items": { "type": "string" } },
+    "video": {
+      "type": "object",
+      "required": ["width", "height", "frame_rate", "scan_type"],
+      "properties": {
+        "width":        { "type": "integer", "minimum": 1 },
+        "height":       { "type": "integer", "minimum": 1 },
+        "frame_rate":   { "type": "string" },
+        "scan_type":    { "type": "string", "enum": ["interlaced", "progressive"] },
+        "field_order":  { "type": "string", "enum": ["tff", "bff", "progressive"] },
+        "color_space":  { "type": "string" },
+        "pixel_format": { "type": "string" },
+        "bitrate_kbps": { "type": ["integer", "null"] },
+        "codec":        { "type": "string" }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "required": ["codec", "sample_rate", "channels"],
+      "properties": {
+        "codec":        { "type": "string" },
+        "sample_rate":  { "type": "integer" },
+        "channels":     { "type": "integer", "minimum": 1 },
+        "bitrate_kbps": { "type": "integer" },
+        "layout":       { "type": "string" }
+      }
+    }
+  }
+}
