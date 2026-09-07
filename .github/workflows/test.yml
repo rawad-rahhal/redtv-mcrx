@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]"
+      - name: Tests and coverage floor
+        run: |
+          python -m pytest -q \
+            --cov=api_gateway --cov=automation_ai --cov=live_ingest \
+            --cov=media_factory --cov=playout_core --cov=program_renderer \
+            --cov=shared_contracts --cov-fail-under=45
+      - name: Build wheel
+        run: python -m pip wheel --no-deps --no-build-isolation -w dist .
